@@ -1,80 +1,45 @@
-# Proposal: Shopfloor Material Supply App Frontend UI
+# Frontend UI Proposal
 
-**Ref:** Depends on `@openspec/changes/01-data-model`, `@openspec/changes/02-backend-api`
+This document outlines the design for the Frontend UI of the Shopfloor Material Supply App. The UI will be a responsive web application built with React and TypeScript.
 
-## 1. View Architecture
+## 1. Views and Components
 
-### LoginView
-- **Purpose**: Provides a form for users to authenticate.
-- **User Roles**: All roles.
-- **Layout**: A simple centered form with fields for email and password.
+### Common Components
+- **`LoginPage.tsx`**: A simple form for user login.
+- **`Navbar.tsx`**: Top navigation bar with logout button and user info.
+- **`OrderCard.tsx`**: A reusable component to display a summary of a delivery order.
+- **`OrderList.tsx`**: A component to display a list of `OrderCard` components.
+- **`CreateOrderForm.tsx`**: A modal or form for creating a new order.
 
-### DashboardView (Role-based)
-- **Purpose**: The main application view that dynamically renders content based on the logged-in user's role.
-- **User Roles**: All roles.
-- **Layout**: Contains a main navigation/header and a content area. The content area will display one of the role-specific dashboards below.
+### Role-Based Views
 
-#### 1a. ProductionDashboard
-- **Purpose**: Allows Production Line Users to create new requests and track their existing ones.
-- **User Roles**: `PRODUCTION`
-- **Layout**: A two-section layout. One section contains the `CreateOrderForm` component. The other section contains the `MyOrdersList` component.
+- **Production User Dashboard**
+  - Displays a list of orders created by the user.
+  - A prominent "Create New Order" button that opens the `CreateOrderForm`.
+  - An action button on each "In Transit" order to "Receive" it.
 
-#### 1b. WarehouseDashboard
-- **Purpose**: Enables Warehouse Users to view and process new and assigned material requests.
-- **User Roles**: `WAREHOUSE`
-- **Layout**: A two-section layout. One section displays the `NewOrdersQueue` component. The other displays the `AssignedOrdersList` component.
+- **Warehouse User Dashboard**
+  - Displays two lists of orders:
+    1.  "New Orders" - All orders with `NEW` status.
+    2.  "My Orders" - Orders assigned to the current user (`IN_PREPARATION`, `IN_TRANSIT`).
+  - Action buttons on orders to "Pick Up" (for new orders) and "Mark as In Transit" (for in-preparation orders).
 
-#### 1c. AdminDashboard
-- **Purpose**: Gives Admins a complete overview of all orders with management capabilities.
-- **User Roles**: `ADMIN`
-- **Layout**: A full-page layout dominated by the `AllOrdersTable` component, with filter and search controls at the top.
+- **Admin Dashboard**
+  - Displays a comprehensive list of all orders, regardless of status.
+  - Includes search and filter controls (by status, date, etc.).
+  - Action buttons on each order to "Edit Status" or "Delete".
 
-## 2. Component Requirements
+## 2. State Management
 
-| Component | Purpose | Data Source |
-|-----------|---------|-------------|
-| `OrderCard` | A reusable component to display a summary of a single order. Shows status, material, and quantity. Contains action buttons. | Prop-driven. |
-| `CreateOrderForm` | A form with inputs for `material_name`, `quantity`, and `delivery_location`. | `POST /api/orders` |
-| `MyOrdersList` | Displays a list of orders created by the current Production User. | `GET /api/orders?requestor=me` |
-| `NewOrdersQueue` | Displays a list of all orders with `NEW` status for warehouse staff. | `GET /api/orders?status=NEW` |
-| `AssignedOrdersList`| Displays orders assigned to the current Warehouse User. | `GET /api/orders?processor=me` |
-| `AllOrdersTable` | A comprehensive, filterable, and searchable table of all orders for admins. | `GET /api/orders/all` |
-| `EditOrderModal` | A modal form for admins to change an order's status and provide a reason. | `PUT /api/orders/{id}/status` |
+- **Strategy**: React Context API or a lightweight state management library like Zustand.
+- **User State**: The logged-in user's information (including role and JWT) will be stored in a global state and persisted in local storage.
+- **Data Fetching**: A dedicated API service (`api.ts`) will handle all communication with the backend, attaching the auth token to every request. React Query will be used for data fetching, caching, and state synchronization.
 
-## 3. User Interactions
+## 3. Routing
 
-### Create Order
-- **Trigger**: Production User clicks "Submit" on the `CreateOrderForm`.
-- **Action**: A POST request is sent to `/api/orders`.
-- **Feedback**: The form is cleared, a success notification appears, and the new order appears in the `MyOrdersList`.
+- **`/login`**: The login page.
+- **`/`**: The main dashboard, which will render the correct view based on the user's role.
+- **`/admin`**: The admin dashboard.
 
-### Pick Up Order
-- **Trigger**: Warehouse User clicks the "Pick Up" button on an order in the `NewOrdersQueue`.
-- **Action**: A PUT request is sent to `/api/orders/{id}/pickup`.
-- **Feedback**: The order is removed from the "New" list and appears in the user's "Assigned Orders" list.
-
-### Receive Order
-- **Trigger**: Production User clicks the "Receive" button on an "In Transit" order.
-- **Action**: A PUT request is sent to `/api/orders/{id}/receive`.
-- **Feedback**: The order's status badge changes to "Completed" and the button disappears.
-
-## 4. Role-based Visibility
-
-| Element | `PRODUCTION` | `WAREHOUSE` | `ADMIN` |
-|---------|----------|----------|---------|
-| Create Order Form | ✓ | ✗ | ✗ |
-| "Pick Up" Button | ✗ | ✓ (on `NEW` orders) | ✗ |
-| "In Transit" Button | ✗ | ✓ (on their `IN_PREP` orders) | ✗ |
-| "Receive" Button | ✓ (on their `IN_TRANSIT` orders) | ✗ | ✗ |
-| "Edit" / "Delete" Buttons | ✗ | ✗ | ✓ |
-| Admin Dashboard | ✗ | ✗ | ✓ |
-
-## 5. API Integration
-
-| Component | Endpoint | Method | Purpose |
-|-----------|----------|--------|---------|
-| `LoginView` | `/api/auth/login` | POST | Authenticate user and store JWT. |
-| `CreateOrderForm` | `/api/orders` | POST | Create a new delivery order. |
-| `NewOrdersQueue` | `/api/orders` | GET | Fetch all orders with `NEW` status. |
-| `AllOrdersTable` | `/api/orders/all` | GET | Fetch all orders for the admin view. |
-| `OrderCard` | `/api/orders/{id}/*` | PUT | Update order status via action buttons. |
+A protected route component will wrap the main routes to redirect unauthenticated users to the login page.
+```
