@@ -3,10 +3,10 @@
 ## 1. Business Domain
 
 ### Domain
-Shopfloor Material Supply Logistics
+This architecture concerns the **Shopfloor Material Supply Chain**. It defines the process of ordering, preparing, and delivering materials from a warehouse to a production line within a manufacturing environment.
 
-### Process description
-This architecture defines the process of requesting, preparing, and delivering materials from a central warehouse to various production lines on a shopfloor. It covers the complete lifecycle of a "Delivery Order," from its creation by a production line user to its final receipt, including all intermediate state transitions and administrative oversight.
+### Process Description
+The core business process is the "Delivery Order" lifecycle. This process begins when a Production Line User requests materials and ends when those materials are confirmed as received. The system provides a digital, traceable, and auditable record of this entire workflow, managed through a series of defined states and transitions.
 
 ---
 
@@ -14,42 +14,49 @@ This architecture defines the process of requesting, preparing, and delivering m
 
 | Role | Responsibilities |
 |---|---|
-| **Production Line User** | - Creates new material supply requirements (Delivery Orders).<br>- Confirms the receipt of delivered materials. |
-| **Warehouse User** | - Views a queue of new Delivery Orders.<br>- "Picks up" an order to begin processing.<br>- Prepares the materials for delivery.<br>- Marks the order as "In Transit" when it leaves the warehouse. |
-| **Admin** | - Monitors the end-to-end status of all Delivery Orders.<br>- Can manually edit the status of any order.<br>- Can delete any order from the system. |
+| **Production Line User** | - Creates new `Delivery Orders`. <br> - Views the status of their own orders. <br> - Confirms receipt of delivered orders, transitioning them to `COMPLETED`. |
+| **Warehouse User** | - Views a queue of `NEW` Delivery Orders. <br> - "Picks up" a `NEW` order, which assigns it to them and moves it to `IN_PREPARATION`. <br> - Marks a prepared order as `IN_TRANSIT` for delivery. |
+| **Admin** | - Has complete read-access to all orders in any state. <br> - Can manually change the state of any order for exception handling. <br> - Can delete any order. <br> - Manages user accounts and roles (Implied for future versions). |
 
 ---
 
 ## 3. Business Process Flow (The Golden Path)
 
-The lifecycle of a Delivery Order follows a strict, linear state transition model:
+The lifecycle of a Delivery Order follows a strict, linear state machine progression.
 
-`NEW` -> `IN_PREPARATION` -> `IN_TRANSIT` -> `COMPLETED`
+**NEW** -> **IN_PREPARATION** -> **IN_TRANSIT** -> **COMPLETED**
 
-This represents the "golden path" or the ideal successful flow of an order. Administrative actions can interrupt or terminate this flow.
+- **`NEW`**: The initial state of an order upon creation. It is unassigned and awaits action from the warehouse.
+- **`IN_PREPARATION`**: The state after a Warehouse User has accepted the order. The materials are being gathered.
+- **`IN_TRANSIT`**: The state indicating the materials have left the warehouse and are on their way to the production line.
+- **`COMPLETED`**: The terminal state indicating the Production Line User has successfully received the materials.
+
+An additional terminal state, **`DELETED`**, exists outside the golden path and is only accessible via an Admin action.
 
 ---
 
 ## 4. Business Rules
 
-These rules are non-negotiable and must be enforced by the backend system logic.
+These rules are non-negotiable and must be enforced by the application's backend logic.
 
-### State Transition Constraints
-- A Delivery Order can only be created in the `NEW` state.
-- Only a **Warehouse User** can transition an order from `NEW` to `IN_PREPARATION`. This action assigns them as the order owner.
-- Only the assigned **Warehouse User** can transition an order from `IN_PREPARATION` to `IN_TRANSIT`.
-- Only the originating **Production Line User** can transition an order from `IN_TRANSIT` to `COMPLETED`.
-- An order in a terminal state (`COMPLETED`, `DELETED`) cannot be further modified by any user except an Admin performing a correction.
+### State Transition Rules
+1.  A Delivery Order can only be created in the `NEW` state.
+2.  Transition from `NEW` to `IN_PREPARATION` is the only allowed path from `NEW`.
+3.  Transition from `IN_PREPARATION` to `IN_TRANSIT` is the only allowed path from `IN_PREPARATION`.
+4.  Transition from `IN_TRANSIT` to `COMPLETED` is the only allowed path from `IN_TRANSIT`.
+5.  `COMPLETED` and `DELETED` are terminal states; no transitions are allowed from them.
 
 ### Role-Based Access Control (RBAC) Rules
-- **Production Line User:** Can `CREATE` orders. Can `READ` their own orders. Can `UPDATE` an order's state to `COMPLETED` if it is `IN_TRANSIT`.
-- **Warehouse User:** Can `READ` all `NEW` orders. Can `UPDATE` an order's state from `NEW` to `IN_PREPARATION` and from `IN_PREPARATION` to `IN_TRANSIT`.
-- **Admin:** Has full `CREATE`, `READ`, `UPDATE`, `DELETE` (CRUD) permissions on all Delivery Orders at any stage.
+1.  **Creation**: Only a `Production Line User` can create a `NEW` order.
+2.  **Pick Up**: Only a `Warehouse User` can transition an order from `NEW` to `IN_PREPARATION`. The user performing this action is permanently assigned to the order.
+3.  **Mark for Transit**: Only the assigned `Warehouse User` can transition their order from `IN_PREPARATION` to `IN_TRANSIT`.
+4.  **Receive**: Only the originating `Production Line User` can transition an order from `IN_TRANSIT` to `COMPLETED`.
+5.  **Admin Override**: An `Admin` can transition any order to any state (except from a terminal state).
+6.  **Deletion**: Only an `Admin` can move an order to the `DELETED` state. A reason for this action must be recorded in the audit log.
 
-### Immutability and Audit Rules
-- Every state transition **MUST** be recorded in an immutable audit log.
-- An **Admin** performing a manual `UPDATE` or `DELETE` action **MUST** provide a reason, which is stored in the audit log.
-- The creation timestamp, original requestor, and assigned warehouse user cannot be changed after they are set.
+### Immutability Rules
+1.  The `Requestor Name` and original `Creation Timestamp` of an order are immutable and can never be changed.
+2.  Once an order is in a terminal state (`COMPLETED` or `DELETED`), all its attributes are immutable.
 
-### Exception Handling
-- If an order is marked as `IN_TRANSIT` but never received, it remains in that state until an **Admin** manually intervenes to resolve its status (e.g., mark as `COMPLETED` or `CANCELLED`).
+### Exception Handling Rules
+1.  Any manual state change performed by an `Admin` must require a "reason for change" text input, which must be stored in the immutable audit log.
