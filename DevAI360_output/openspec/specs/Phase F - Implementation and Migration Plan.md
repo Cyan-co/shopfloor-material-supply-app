@@ -2,141 +2,112 @@
 
 ## 1. Implementation Overview
 
-This document outlines a phased, Agile-based approach to developing and deploying the Shopfloor Material Supply application.
+This plan outlines a 5-sprint (10-week) timeline to deliver the initial production-ready version of the Shopfloor Material Supply application.
+
+### Development Methodology
+- **Agile/Scrum:** The project will be executed in a series of 2-week sprints.
+- **Release Cadence:** A release to STAGING will occur at the end of each sprint. The production release is planned at the end of Sprint 5.
 
 ### Project Timeline
-The project is estimated to take **6 sprints (12 weeks)** from foundation setup to initial production release.
 
-| Phase | Duration | Focus | Sprints |
-|---|---|---|---|
-| **Phase 1: Foundation** | 1 Sprint (2 weeks) | Infrastructure, CI/CD, application scaffolding | 1 |
-| **Phase 2: Core Development**| 3 Sprints (6 weeks) | Backend API, Frontend UI for core user flows | 2-4 |
-| **Phase 3: Hardening** | 1 Sprint (2 weeks) | Admin features, security, performance, testing | 5 |
-| **Phase 4: Deployment** | 1 Sprint (2 weeks) | UAT, production deployment, and monitoring setup | 6 |
-
-### Team Allocation
-A standard agile team is assumed for this project, with allocation varying by phase.
+| Phase | Sprints | Focus |
+|---|---|---|
+| **Phase 1: Foundation** | Sprint 1 | Infrastructure, CI/CD, Database Schema, App Scaffolding. |
+| **Phase 2: Core Features** | Sprints 2-3 | Backend API and Frontend UI for the "golden path" workflow. |
+| **Phase 3: Admin & Hardening**| Sprint 4 | Admin features, security hardening, performance testing. |
+| **Phase 4: Deployment** | Sprint 5 | UAT, final testing, and production go-live. |
 
 ---
 
-## 2. Phase 1: Foundation (Sprint 1)
+## 2. Sprint-Level Breakdown
 
-### Goals:
-- Establish the complete technical foundation for the project.
-- Enable automated builds and a local development environment.
+### Sprint 1: Foundation
+**Goal:** Establish the complete technical foundation. By the end of this sprint, a "hello world" application should be automatically deployable to the STAGING environment.
+**Work Packages:** WP-01
+**Deliverables:**
+- Git repository with protected `main` branch.
+- CI/CD pipeline in GitHub Actions that builds, tests, and deploys.
+- Kubernetes manifests for STAGING.
+- Initial PostgreSQL schema created via a Flyway script.
+- Scaffolding for both Spring Boot and Angular applications.
 
-### Deliverables:
-| ID | Deliverable | Acceptance Criteria |
-|---|---|---|
-| **F1.1**| Git Repository & Strategy | `main` branch protected; feature-branch workflow documented. |
-| **F1.2**| CI/CD Pipeline (Foundation)| GitHub Actions pipeline builds, tests, and pushes Docker images on PR. |
-| **F1.3**| Local Dev Environment | A `docker-compose.yml` file allows a one-command startup of the entire stack locally. |
-| **F1.4**| Application Scaffolding | Basic Spring Boot and Angular applications are created with health check endpoints. |
-| **F1.5**| Initial Database Schema | Flyway is set up; the initial migration script for `users` and `delivery_orders` tables is created and runs successfully. |
+### Sprints 2-3: Core Feature Development
+**Goal:** Implement the primary workflow for Production Line and Warehouse users.
+**Work Packages:** WP-02, WP-03, WP-04
+**Deliverables:**
+- **Backend:** All API endpoints for creating orders and transitioning them through `NEW`, `IN_PREPARATION`, `IN_TRANSIT`, and `COMPLETED` states are fully implemented and tested.
+- **Frontend:** UI components are built for Production Line and Warehouse users to perform all actions in the "golden path."
+- **Integration:** The frontend is fully integrated with the backend API for these core features.
 
----
+### Sprint 4: Admin Features & System Hardening
+**Goal:** Complete admin functionality and prepare the application for production-level quality.
+**Work Packages:** WP-05
+**Deliverables:**
+- **Admin UI:** A dashboard for Admins to view all orders and perform manual edit/delete actions.
+- **Observability:** Prometheus metrics and Grafana dashboards are configured.
+- **Security:** Static code analysis (SAST) and dependency scanning are integrated into the pipeline. All critical vulnerabilities are addressed.
+- **Testing:** End-to-end test suite is complete and passing.
 
-## 3. Phase 2: Core Development (Sprints 2-4)
-
-### Goals:
-- Implement the core "golden path" functionality for Production Line and Warehouse users.
-- Deliver a functional API and a UI that can manage the order lifecycle.
-
-### Deliverables (Sprint 2 - Backend):
-| ID | Deliverable | Acceptance Criteria |
-|---|---|---|
-| **C1.1**| User & Order API | CRUD endpoints for `delivery_orders` are implemented. |
-| **C1.2**| State Machine Logic | The service layer correctly enforces the `NEW` -> `IN_PREPARATION` -> `IN_TRANSIT` -> `COMPLETED` state transitions. |
-| **C1.3**| Security & Auth | API endpoints are secured; role-based access is enforced. |
-
-### Deliverables (Sprints 3-4 - Frontend):
-| ID | Deliverable | Acceptance Criteria |
-|---|---|---|
-| **C2.1**| Production User UI | Production Line Users can log in, create a new order, and see a list of their own active orders. They can mark an "In Transit" order as "Completed". |
-| **C2.2**| Warehouse User UI | Warehouse Users can log in, see a list of `NEW` orders, "pick up" an order, and mark it as "In Transit". |
-
----
-
-## 4. Phase 3: Hardening (Sprint 5)
-
-### Goals:
-- Implement administrative features.
-- Harden the application against security threats and ensure observability.
-- Complete comprehensive testing.
-
-### Deliverables:
-| ID | Deliverable | Acceptance Criteria |
-|---|---|---|
-| **H1.1**| Admin UI | Admins can view all orders, manually edit status, and delete orders. |
-| **H1.2**| Audit Trail | All state changes and admin actions are correctly logged in the `audit_logs` table. |
-| **H1.3**| Monitoring & Alerts | Grafana dashboards are built; critical alerts for error rate and service availability are configured and tested. |
-| **H1.4**| E2E Test Suite | An automated end-to-end test suite covers all primary user flows. |
+### Sprint 5: UAT & Production Deployment
+**Goal:** Validate the system with end-users and deploy to production.
+**Deliverables:**
+- Successful User Acceptance Testing (UAT) in the STAGING environment with sign-off from stakeholders.
+- All production configurations (secrets, network policies) are in place.
+- The application is deployed to the PROD Kubernetes environment.
+- Post-deployment smoke tests are successfully executed.
 
 ---
 
-## 5. Phase 4: Deployment (Sprint 6)
-
-### Goals:
-- Prepare for and execute the production release.
-- Ensure the system is stable and monitored post-launch.
-
-### Deliverables:
-| ID | Deliverable | Acceptance Criteria |
-|---|---|---|
-| **D1.1**| Staging Deployment & UAT | The complete application is deployed to the STAGING environment. Key users successfully complete User Acceptance Testing. |
-| **D1.2**| Production Deployment | The application is successfully deployed to the PROD Kubernetes cluster. |
-| **D1.3**| Post-Launch Monitoring | The team actively monitors dashboards and logs for the first 48 hours after launch to address any immediate issues. |
-
----
-
-## 6. Migration Strategy
+## 3. Migration Strategy
 
 ### Migration Type
 - **[x] Greenfield (no migration needed)**
-- [ ] Big Bang (full cutover)
-- [ ] Phased Migration
-- [ ] Parallel Run
 
-This is a new system replacing a manual process, so no data migration is required for V1.
+This is a new application replacing a manual process, so there is no existing technical system or data to migrate.
 
 ---
 
-## 7. Rollout Strategy
+## 4. Rollout Strategy
 
 ### Environment Progression
-Deployment to each environment is triggered by a merge to the corresponding Git branch and requires the successful completion of the previous stage's pipeline.
-`Feature Branch` -> `main` (triggers **STAGING** deploy) -> `Git Tag` (triggers **PROD** deploy)
+Deployment will be automated and will progress through environments based on Git flow:
+`Feature Branch -> PR -> main (Deploy to STAGING) -> Git Tag (Deploy to PROD)`
 
 ### Rollback Procedures
-| Scenario | Procedure | RTO |
+
+| Scenario | Procedure | RTO (Recovery Time Objective) |
 |---|---|---|
-| Failed Production Deployment | Use Kubernetes native `kubectl rollout undo` command to revert to the previous stable deployment. | < 5 minutes |
-| Critical Post-Launch Bug | Rollback the deployment using the same procedure. No database rollback is needed for most code-related bugs. | < 5 minutes |
+| Failed Production Deployment | Use Kubernetes native `kubectl rollout undo` command to revert to the previous stable deployment version. | < 5 minutes |
+| Critical Bug Post-Launch | Rollback the deployment using the same procedure as a failed deployment. | < 5 minutes |
+| Data Corruption | Restore the database from the last known good Point-in-Time Recovery (PITR) backup. | < 1 hour |
 
 ---
 
-## 8. Success Metrics
+## 5. Success Metrics
 
 ### Technical Metrics
-| Metric | Target | Measurement |
-|---|---|---|
-| Availability | 99.9% | Prometheus/Grafana uptime monitoring |
-| API Response Time (p95) | < 500ms | Prometheus histogram metrics from the backend |
-| Error Rate | < 0.1% | Loki log aggregation and alerting |
 
-### Business Metrics
-| Metric | Target (First 3 Months) | Measurement |
+| Metric | Target | Measurement Tool |
 |---|---|---|
-| User Adoption | 95% of material requests are made through the app | Application analytics |
-| Order Fulfillment Time | 10% reduction in average time from `NEW` to `COMPLETED` | Timestamps in the `delivery_orders` table |
+| Availability | > 99.9% | Prometheus / Uptime Monitoring |
+| API Response Time (p95) | < 500ms | Prometheus / Grafana |
+| Code Coverage | > 80% | SonarQube |
+
+### Business Metrics (from PRD)
+
+| Metric | Target (within 6 months) | Measurement Method |
+|---|---|---|
+| Order Fulfillment Time | 30% reduction | Analytics on `delivery_orders` timestamps. |
+| Incorrect Deliveries | 90% reduction | Tracking manual admin corrections in the `audit_logs`. |
+| System Adoption | 100% of requests tracked | Application analytics. |
 
 ---
 
-## 9. Milestones
+## 6. Milestones
 
-| Milestone | Target Date | Criteria |
+| Milestone | Target | Criteria |
 |---|---|---|
-| **M1: Foundation Complete** | End of Sprint 1 | CI/CD is fully functional; dev environment is ready. |
-| **M2: Core Features Implemented**| End of Sprint 4 | Production and Warehouse user flows are complete and tested. |
-| **M3: Release Candidate Ready**| End of Sprint 5 | All features are complete, tested, and security-hardened. |
-| **M4: Production Release** | End of Sprint 6 | Application is live and serving users in production. |
+| M1: Foundation Complete | End of Sprint 1 | CI/CD pipeline is green; schema is deployed. |
+| M2: Core Features Implemented | End of Sprint 3 | The primary user workflow is testable end-to-end in STAGING. |
+| M3: Feature Complete | End of Sprint 4 | All features, including Admin, are complete. |
+| M4: Production Go-Live | End of Sprint 5 | Application is live and available to all users in the PROD environment. |
