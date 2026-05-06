@@ -1,38 +1,29 @@
-# Detailed Design: Shopfloor Material Supply App
+## Low-Level Design — Complete
 
-This document provides a consolidated summary of the detailed design for the Shopfloor Material Supply App, covering the data model, backend API, and frontend UI.
+**Requirement:** To create a web application for a shopfloor material supply system, allowing production line users to request materials from a warehouse. The system must track the order lifecycle from creation to delivery and provide administrators with override capabilities.
 
-## 1. Data Model
+**Technology Stack:** Spring Boot (Java 17), PostgreSQL, Angular
 
-The data model is designed around three core entities: `users`, `delivery_orders`, and `audit_logs`.
+### Generated Files
 
-- **`users`**: Stores user information, including their role (`PRODUCTION`, `WAREHOUSE`, `ADMIN`).
-- **`delivery_orders`**: Represents a material request with a status that tracks its lifecycle (`NEW`, `IN_PREPARATION`, `IN_TRANSIT`, `COMPLETED`).
-- **`audit_logs`**: Provides an immutable record of all significant actions performed on an order, ensuring accountability.
+[x] Step 01: Data Model  → changes/01-data-model/proposal.md + tasks.md
+[x] Step 02: Backend API → changes/02-backend-api/proposal.md + tasks.md
+[x] Step 03: Frontend UI → changes/03-frontend-ui/proposal.md + tasks.md
 
-For detailed schemas, see `01-data-model/proposal.md`.
+### Layer Summaries
 
-## 2. Backend API
+#### Data Model
+The data model is designed with three core entities: `User`, `DeliveryOrder`, and `AuditLog`, all within a dedicated `shopfloor` schema. Key relationships are established between users and the orders they create or handle. The design includes soft-delete functionality for orders and a detailed audit trail for all administrative actions to ensure data integrity and traceability.
 
-The backend will be a Go-based REST API secured with JWT authentication.
+#### Backend API
+The backend is built around a service-oriented architecture with three main services: `DeliveryOrderService`, `AuthService`, and `AuditLogService`. It exposes a RESTful API with six endpoints for managing the order lifecycle. Security is handled via JWT and method-level authorization with Spring Security's `@PreAuthorize` annotations, ensuring that business rules and role-based permissions are strictly enforced at the service layer.
 
-- **Authentication**: A `POST /api/auth/login` endpoint will issue JWTs. A middleware will protect all other endpoints.
-- **Core Endpoints**: The API provides standard CRUD operations on `/api/orders` and `/api/users`.
-- **Business Logic**: State transitions for orders are managed through a dedicated `PUT /api/orders/{id}/status` endpoint, with role-based rules enforced by the `OrderService`.
-- **Admin Capabilities**: Admins have full access to manage users and can manually edit or delete orders, with all such actions being logged.
+#### Frontend UI
+The frontend architecture is composed of five primary views and several reusable shared components. The design is role-centric, using Angular Guards to manage access to different routes and dynamically rendering UI elements based on the user's role and the state of the data. API integration is managed through dedicated services and a JWT interceptor, providing a clear and secure data flow from the UI to the backend.
 
-For a full list of endpoints and service descriptions, see `02-backend-api/proposal.md`.
+### Cross-Cutting Concerns
 
-## 3. Frontend UI
-
-The frontend will be a responsive React application with role-based views.
-
-- **Technology**: Built with React and TypeScript, using React Router for navigation and a lightweight state management solution.
-- **User Experience**:
-  - **Production users** will have a simple interface to create new orders and track their progress.
-  - **Warehouse users** will have a dashboard to manage new and in-progress orders.
-  - **Admins** will have a comprehensive view of all orders with powerful search and management tools.
-- **Component-Based Design**: The UI will be built from a set of reusable components, ensuring consistency and maintainability.
-
-For detailed view descriptions and component breakdowns, see `03-frontend-ui/proposal.md`.
-```
+- **Security:** Authentication is handled by JWTs. Authorization is enforced at both the route level (Angular Guards) and the service-method level (Spring Security), providing defense-in-depth.
+- **Error Handling:** A global exception handler in the backend provides consistent JSON error responses. A frontend interceptor catches these errors and displays user-friendly toast notifications.
+- **Audit Trail:** All administrative modifications are captured in an immutable `audit_logs` table, accessible only to administrators.
+- **Data Integrity:** The system enforces the order lifecycle via a state machine in the service layer, preventing invalid status transitions. All data deletions are soft deletes.
