@@ -1,9 +1,33 @@
-ID,Summary,Description,Priority,Phase
-1,"Data Model and Database Setup","Define the database schema and set up migrations.",Must Have,Backend Development
-2,"Authentication Service","Implement user login and JWT generation.",Must Have,Backend Development
-3,"Core Order Service","Implement the business logic for the order lifecycle.",Must Have,Backend Development
-4,"API Endpoints & RBAC","Implement the full REST API and secure it with role-based access control.",Must Have,Backend Development
-5,"Project Setup and API Service","Initialize the React project and create a service to communicate with the backend.",Must Have,Frontend Development
-6,"Views and Components","Build all required pages and reusable components.",Must Have,Frontend Development
-7,"Role-Based UI Implementation","Implement the logic to dynamically show/hide UI elements based on the user's role.",Must Have,Frontend Development
-8,"Containerization and CI/CD","Create Dockerfiles for the backend and frontend and set up CI/CD pipelines.",Must Have,Deployment
+"ID","Priority","Layer","Title","Description"
+"DM-1","Must-Have","Data Model","Create Flyway Migration Script","File: backend/src/main/resources/db/migration/V202407311000__Create_shopfloor_schema.sql. Creates the initial database schema and tables for users, delivery_orders, and audit_logs."
+"DM-2","Must-Have","Data Model","Create User Entity","File: backend/src/main/java/com/example/shopfloor/model/User.java. Defines the JPA entity for the users table."
+"DM-3","Must-Have","Data Model","Create DeliveryOrder Entity","File: backend/src/main/java/com/example/shopfloor/model/DeliveryOrder.java. Defines the JPA entity for orders, including relationships to User."
+"DM-4","Must-Have","Data Model","Create AuditLog Entity","File: backend/src/main/java/com/example/shopfloor/model/AuditLog.java. Defines the immutable JPA entity for audit logs."
+"DM-5","Must-Have","Data Model","Create DeliveryOrderStatus Enum","File: backend/src/main/java/com/example/shopfloor/model/DeliveryOrderStatus.java. Defines the state machine for order status transitions."
+"DM-6","Must-Have","Data Model","Create UserRole Enum","File: backend/src/main/java/com/example/shopfloor/model/UserRole.java. Defines the user roles for authorization."
+"DM-7","Must-Have","Data Model","Create UserRepository","File: backend/src/main/java/com/example/shopfloor/repository/UserRepository.java. Creates the Spring Data JPA repository for User entities."
+"DM-8","Must-Have","Data Model","Create DeliveryOrderRepository","File: backend/src/main/java/com/example/shopfloor/repository/DeliveryOrderRepository.java. Creates the repository for DeliveryOrder entities."
+- "DM-9","Must-Have","Data Model","Create AuditLogRepository","File: backend/src/main/java/com/example/shopfloor/repository/AuditLogRepository.java. Creates the repository for AuditLog entities."
+"BE-1","Must-Have","Backend","Configure SecurityConfig","File: backend/src/main/java/com/example/shopfloor/config/SecurityConfig.java. Configures the main SecurityFilterChain, CSRF, session management, and authorization rules."
+"BE-2","Must-Have","Backend","Implement JWT Utilities","File: backend/src/main/java/com/example/shopfloor/security/JwtUtil.java and JwtAuthFilter.java. Implements JWT generation, validation, and the filter to process tokens on incoming requests."
+"BE-3","Must-Have","Backend","Implement UserDetailsService","File: backend/src/main/java/com/example/shopfloor/security/AppUserDetailsService.java. Integrates the User entity with Spring Security for loading user details."
+"BE-4","Must-Have","Backend","Create DTOs","Path: backend/src/main/java/com/example/shopfloor/dto/. Create all required Data Transfer Objects for API requests and responses."
+"BE-5","Must-Have","Backend","Implement AuditLogService","File: backend/src/main/java/com/example/shopfloor/service/AuditLogService.java. Implements the logic for creating audit log entries."
+"BE-6","Must-Have","Backend","Implement DeliveryOrderService","File: backend/src/main/java/com/example/shopfloor/service/DeliveryOrderService.java. Implement the core business logic for creating, updating, and retrieving orders, including all role-based authorization checks."
+"BE-7","Must-Have","Backend","Implement AuthController","File: backend/src/main/java/com/example/shopfloor/controller/AuthController.java. Implements the /api/auth/login endpoint for user authentication."
+"BE-8","Must-Have","Backend","Implement DeliveryOrderController","File: backend/src/main/java/com/example/shopfloor/controller/DeliveryOrderController.java. Implements all REST endpoints for managing delivery orders."
+"BE-9","Must-Have","Backend","Create Custom Exceptions","Path: backend/src/main/java/com/example/shopfloor/exception/. Defines custom exceptions for specific error conditions like ResourceNotFound."
+"BE-10","Must-Have","Backend","Create GlobalExceptionHandler","File: backend/src/main/java/com/example/shopfloor/exception/GlobalExceptionHandler.java. Implements a global handler to ensure consistent JSON error responses."
+"FE-1","Must-Have","Frontend","Create Frontend Models & Enums","Files: frontend/src/app/models/*.ts. Create TypeScript interfaces and enums that mirror the backend DTOs."
+"FE-2","Must-Have","Frontend","Create AuthService","File: frontend/src/app/services/auth.service.ts. Implements methods for login, logout, and managing the JWT."
+"FE-3","Must-Have","Frontend","Create OrderApiService","File: frontend/src/app/services/order-api.service.ts. Implements methods for all API calls related to orders."
+"FE-4","Must-Have","Frontend","Create AdminApiService","File: frontend/src/app/services/admin-api.service.ts. Implements methods for admin-specific API calls."
+"FE-5","Must-Have","Frontend","Create JwtInterceptor","File: frontend/src/app/interceptors/jwt.interceptor.ts. Interceptor to automatically add the Authorization header to API requests."
+"FE-6","Must-Have","Frontend","Configure Routing and Guards","Files: app-routing.module.ts, auth.guard.ts, role.guard.ts. Configure all application routes and implement guards to protect them."
+"FE-7","Must-Have","Frontend","Generate Shared Components","Path: frontend/src/app/shared/components/. Create reusable components like StatusBadgeComponent and ConfirmDialogComponent."
+"FE-8","Must-Have","Frontend","Generate Layout Components","File: frontend/src/app/layout/navbar/NavbarComponent. Create the main navigation bar with role-based links."
+"FE-9","Must-Have","Frontend","Implement LoginComponent","File: frontend/src/app/components/login/LoginComponent. Implement the user login form."
+"FE-10","Must-Have","Frontend","Implement OrderDashboardComponent","File: frontend/src/app/components/order-dashboard/OrderDashboardComponent. Implement the main view for displaying and interacting with orders."
+"FE-11","Must-Have","Frontend","Implement CreateOrderFormComponent","File: frontend/src/app/components/create-order-form/CreateOrderFormComponent. Implement the form for creating new orders."
+"FE-12","Must-Have","Frontend","Implement AdminDashboardComponent","File: frontend/src/app/components/admin-dashboard/AdminDashboardComponent. Implement the admin-specific view with extended controls."
+"FE-13","Must-Have","Frontend","Implement AuditLogComponent","File: frontend/src/app/components/audit-log/AuditLogComponent. Implement the view for displaying order audit history."
