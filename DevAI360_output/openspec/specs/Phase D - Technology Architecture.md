@@ -2,111 +2,128 @@
 
 ## 1. Infrastructure Overview
 
-This document defines the infrastructure and operational standards for the Shopfloor Material Supply application. All environments must be managed via Infrastructure as Code (IaC), using tools like Terraform or Kubernetes YAML.
-
 ### Container Platform
-- **Runtime:** Docker is the mandatory container runtime.
-- **Orchestration:**
-  - **Local/DEV:** Docker Compose will be used for simplicity and fast startup.
-  - **STAGING/PROD:** Kubernetes is the mandatory orchestration platform for scalability and resilience.
-- **Registry:** A private container registry (e.g., Docker Hub Private, GitHub Container Registry) will be used to store application images.
+
+- **Runtime**: Docker will be used to containerize the Spring Boot backend and the Angular frontend (served via Nginx).
+- **Orchestration**: Docker Compose will be used for local development (`DEV`) and small-scale `TEST` environments. Kubernetes is the target for `STAGING` and `PROD` environments to ensure scalability and resilience.
+- **Registry**: A private container registry (e.g., Docker Hub Private, Harbor, or cloud provider equivalent) will store the application images.
 
 ### Deployment Environments
 
-| Environment | Purpose | Orchestration | Scaling |
-|---|---|---|---|
-| **DEV (Local)** | Individual developer environment | Docker Compose | 1 replica per service |
-| **TEST** | Automated integration & E2E testing | Kubernetes | 1 replica per service |
-| **STAGING** | Pre-production user acceptance testing (UAT) | Kubernetes | 2 replicas, production-like configuration |
-| **PROD** | Live production environment | Kubernetes | 3+ replicas with Horizontal Pod Autoscaling (HPA) |
+| Environment | Purpose | Orchestration | Scaling | Resources |
+| :--- | :--- | :--- | :--- | :--- |
+| **DEV** | Local developer machines | Docker Compose | 1 replica | Minimal |
+| **TEST** | Automated integration and E2E testing | Docker Compose | 1 replica | Minimal |
+| **STAGING** | Pre-production validation, user acceptance | Kubernetes | 2 replicas | Production-like |
+| **PROD** | Live production environment | Kubernetes | 3+ replicas (HPA) | Full |
 
 ---
 
 ## 2. Network Architecture
 
-### Ingress Configuration
-- **Ingress Controller:** A standard Kubernetes Ingress controller (e.g., NGINX Ingress) will be used to manage external access to the services.
-- **TLS Termination:** TLS certificates (e.g., from Let's Encrypt) will be managed by `cert-manager` and terminated at the Ingress layer. All external traffic must be encrypted (HTTPS).
-- **DNS:** The application will be accessible via a standard domain, e.g., `shopfloor-supply.yourcompany.com`.
+### Ingress Configuration (Kubernetes)
+
+- **Load Balancer**: A cloud-provider LoadBalancer service will be used, routing traffic to an NGINX Ingress Controller.
+- **TLS Termination**: TLS will be terminated at the Ingress Controller. Certificates will be managed automatically using `cert-manager` with Let's Encrypt.
+- **DNS**: The application will be accessible via a dedicated subdomain, e.g., `shopfloor-supply.your-company.com`.
 
 ### Service Communication
-- **Internal:** Services within the Kubernetes cluster will communicate using standard Kubernetes DNS service names (e.g., `http://backend-service:8080`).
-- **Network Policies:** Kubernetes Network Policies **MUST** be implemented to enforce a "deny-by-default" posture. Policies will explicitly allow traffic only between required components (e.g., allow frontend to call backend API, allow backend to connect to database).
+
+- **Internal**: Within the Kubernetes cluster, services will communicate using standard Kubernetes DNS names (e.g., `backend-service.default.svc.cluster.local`).
+- **External**: All external traffic to the backend must pass through the Ingress Controller. Direct exposure of the backend service is forbidden.
+
+### Network Policies
+
+- **Default Deny**: A default-deny policy will be in place.
+- **Allowed Traffic**:
+    - Ingress Controller -> Frontend Service (Port 80)
+    - Ingress Controller -> Backend Service (Port 8080)
+    - Backend Service -> Database Service (Port 5432)
 
 ---
 
 ## 3. Database Infrastructure
 
 ### PostgreSQL Configuration
-- **Version:** 15+
-- **Deployment:** For PROD, the database will be deployed as a managed service (e.g., AWS RDS, Azure Database for PostgreSQL) or a stateful set in Kubernetes with persistent volume claims.
-- **Backup Strategy:** Daily automated snapshots are mandatory, with Point-In-Time Recovery (PITR) enabled and a retention of at least 14 days.
-- **Replication:** A master-slave replication setup with at least one read replica is required for the PROD environment to ensure high availability.
+
+- **Version**: 15+
+- **Connection Pooling**: PgBouncer will be used in front of the PostgreSQL instance in `STAGING` and `PROD` to manage connections efficiently.
+- **Backup Strategy**: Daily automated snapshots with Point-In-Time Recovery (PITR) enabled, retained for 30 days.
+- **Replication**: For `PROD`, a primary-replica setup will be used to ensure high availability for read operations and provide a hot standby.
 
 ---
 
-## 4. Security Infrastructure
+## 4. Caching Infrastructure (if applicable)
+
+### Redis Configuration
+
+- **Purpose**: Initially out of scope for the MVP. If performance bottlenecks are identified, Redis will be introduced for caching user sessions and query results.
+- **Eviction Policy**: `allkeys-lru` (Least Recently Used).
+
+---
+
+## 5. Security Infrastructure
 
 ### Authentication & Authorization
-- **Protocol:** The system will use OAuth 2.0 with the Client Credentials or Authorization Code flow.
-- **Identity Provider (IdP):** A centralized IdP like Keycloak is recommended. For V1, a simple identity service can be built, but it must issue signed JWTs.
-- **Token Format:** JWT containing `user_id`, `role`, and an expiration (`exp`) claim.
+
+- **Protocol**: OAuth 2.0 (Authorization Code Flow).
+- **Identity Provider (IdP)**: A dedicated IdP like Keycloak will be used. It will be responsible for user authentication and issuing JWTs.
+- **Token Format**: JWT containing user ID, username, and role.
+- **Token Storage**: The frontend will store tokens securely (e.g., in memory with refresh token logic).
 
 ### Secrets Management
-- **Storage:** All secrets (database passwords, API keys, JWT signing keys) **MUST** be stored in Kubernetes Secrets. They must not be checked into source control.
-- **Access:** Secrets will be mounted into pods as environment variables or files at runtime, following the principle of least privilege.
+
+- **Storage**: Kubernetes Secrets will be used to store all sensitive information (database passwords, API keys, JWT signing keys).
+- **Access**: Secrets will be mounted into pods as environment variables or files with strict, role-based access control (RBAC) policies.
 
 ---
 
-## 5. Monitoring & Observability
+## 6. Monitoring & Observability
 
 ### Metrics
-- **Tool:** A Prometheus instance will scrape metrics from all application components.
-- **Dashboards:** Grafana will be used to visualize key metrics.
-- **Required Metrics:**
-  - **Application:** HTTP request rate, error rate, latency (p95, p99).
-  - **JVM:** Heap usage, GC activity.
-  - **Database:** Connection pool size, query latency.
+
+- **Tool**: Prometheus (via Spring Boot Actuator for the backend).
+- **Dashboards**: Grafana dashboards will be created to visualize key metrics.
+- **Required Metrics**: JVM metrics (heap, threads), HTTP request latency (p99), error rates (4xx, 5xx), database connection pool usage, and business metrics (orders created per hour).
 
 ### Logging
-- **Tool:** The ELK Stack (Elasticsearch, Logstash, Kibana) or Loki will be used for centralized logging.
-- **Log Format:** All application logs **MUST** be structured (JSON format) and written to `stdout`.
-- **Required Fields:** `timestamp`, `log_level`, `service_name`, `trace_id`, `message`.
 
-### Alerting
-- Alerts will be configured in Prometheus's Alertmanager.
-- **Critical Alerts:** High error rate (>5% in 5 min), service down, database connection failure.
-- **Warning Alerts:** High latency (p99 > 1.5s), high CPU/memory usage.
+- **Tool**: ELK Stack (Elasticsearch, Logstash, Kibana).
+- **Log Format**: All services must log in a structured JSON format.
+- **Required Fields**: `timestamp`, `level`, `service_name`, `traceId`, `message`.
 
 ---
 
-## 6. CI/CD Pipeline
+## 7. CI/CD Pipeline
 
-A GitHub Actions pipeline will automate the build, test, and deployment process.
+### Pipeline Stages (GitHub Actions)
 
-### Pipeline Stages
-```
-On Push (main) -> Build -> Unit & Integration Test -> Security Scan -> Build & Push Docker Image -> Deploy to STAGING -> [Manual Approval] -> Deploy to PROD
-```
+`Build` -> `Test` -> `Security Scan` -> `Publish Image` -> `Deploy to Staging` -> `Manual Approval` -> `Deploy to Prod`
 
 ### Stage Requirements
 
 | Stage | Actions | Gate |
-|---|---|---|
-| **Build** | `mvn clean install`, `npm install && npm run build` | All unit tests pass with >80% code coverage. |
-| **Security Scan** | SonarQube SAST analysis, Trivy dependency scan. | No new critical or high-severity vulnerabilities found. |
-| **Deploy STAGING** | `kubectl apply -f k8s/staging` | Automatic upon successful scan. |
-| **Deploy PROD** | `kubectl apply -f k8s/prod` | Requires manual approval from a project lead in the GitHub Actions environment. |
+| :--- | :--- | :--- |
+| **Build** | `mvn clean install` for backend, `npm run build` for frontend. Dockerize applications. | All compilation and unit tests pass. |
+| **Test** | Run integration tests against a test database. | Code coverage > 80%. |
+| **Security** | Run SAST (e.g., SonarQube) and dependency vulnerability scans. | No critical or high vulnerabilities found. |
+| **Publish** | Push Docker images to the private container registry. | - |
+| **Deploy** | Apply Kubernetes manifests for the target environment. | Previous stage success. |
+| **Approval** | Manual gate for production deployment. | Sign-off from Dev Lead / Product Owner. |
 
 ---
 
-## 7. Disaster Recovery
+## 8. Disaster Recovery
 
 ### Backup Strategy
+
 | Component | Frequency | Retention | RTO | RPO |
-|---|---|---|---|---|
-| Database | Daily Full, PITR enabled | 14 days | < 1 hour | < 5 minutes |
-| K8s Config (IaC) | On change (Git) | Indefinite | < 30 minutes | N/A |
+| :--- | :--- | :--- | :--- | :--- |
+| Database | Daily Snapshots | 30 days | < 1 hour | < 24 hours |
+| K8s Configs | On change (Git) | Forever | < 15 mins | N/A |
 
 ### Recovery Procedures
-A runbook must be maintained detailing the step-by-step process for restoring the application and database from backups in a new region or cluster. The target Recovery Time Objective (RTO) is 2 hours.
+
+- **Application Failure**: Kubernetes will automatically restart failed pods. A `helm rollback` command can be used to revert to a previous stable deployment.
+- **Database Failure**: The database will be restored from the latest successful snapshot.
+- **Full Environment Disaster**: The entire environment will be recreated from the Infrastructure as Code (IaC) scripts and application manifests stored in Git.
